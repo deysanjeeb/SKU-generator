@@ -1,53 +1,40 @@
-import csv
-from itertools import product
+import pandas as pd
 
-def generate_child_skus(parent_sku):
-    # Define the variations
-    variations = {
-        'color_temp': ['3500K', '4500K', '6500K', '2700-6500K'],
-        'lumens_per_watt': ['130', '140', '150'],
-        'color': ['Black', 'White']
-    }
-
-    # Generate all combinations
-    combinations = product(variations['color_temp'], variations['lumens_per_watt'], variations['color'])
-
-    # Generate child SKUs
+# Function to generate child SKUs appending only the unique parts of the Name column
+def generate_child_skus_unique(data):
     child_skus = []
-    for combo in combinations:
-        color_temp, lumens, color = combo
-        
-        # Skip combinations that don't exist in the given list
-        if color_temp == '2700-6500K' and lumens != '150':
-            continue
-        if color_temp == '3500K' and lumens == '150':
-            continue
-        if color_temp == '4500K' and lumens == '140':
-            continue
-        
-        child_sku = f"{parent_sku}-{color_temp.replace('-', '')}-{lumens}-{color}"
-        description = f"{color_temp} Diffused Glow 12W-1 Feet {color}-{lumens} Lum/Watt"
-        child_skus.append((child_sku, description))
+    parent_name = None
+    parent_sku = None
 
-    return child_skus
+    for index, row in data.iterrows():
+        if row['Type'] == 'variable':
+            # Store the parent SKU and Name for the upcoming variations
+            parent_sku = row['SKU']
+            parent_name = row['Name']
+        elif row['Type'] == 'variation' and parent_sku and parent_name:
+            # Extract unique part by removing the common part with the parent Name
+            variation_name = row['Name']
+            unique_part = variation_name.replace(parent_name, "").strip().replace(" ", "-").replace(",", "").replace("/", "-")
+            unique_part = unique_part.replace("--", "-")
+            child_sku = f"{parent_sku}-{unique_part}" if unique_part else parent_sku  # If no unique part, just use parent SKU
+            child_skus.append({
+                'Parent SKU': parent_sku,
+                'Variation Name': row['Name'],
+                'Generated Child SKU': child_sku
+            })
 
-def write_to_csv(skus, filename):
-    with open(filename, 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(['Child SKU', 'Description'])
-        writer.writerows(skus)
+    return pd.DataFrame(child_skus)
 
-if __name__ == "__main__":
-    parent_sku = "MS3005-DF-300MM"
-    child_skus = generate_child_skus(parent_sku)
-    
-    # Print the results
-    for sku, description in child_skus:
-        print(f"SKU: {sku}")
-        print(f"Description: {description}")
-        print()
+# Load your CSV file
+filename = 'Ultra thin magnetic product'
+file_path = f'{filename}.csv'  # Replace with your actual file path
+data = pd.read_csv(file_path)
 
-    # Write to CSV
-    filename=f'{parent_sku}_child_skus.csv'
-    write_to_csv(child_skus, filename)
-    print(f"Child SKUs have been written to {filename}")
+# Generate the child SKUs with unique parts
+child_sku_unique_df = generate_child_skus_unique(data)
+
+# Save the new unique child SKUs to a CSV file
+output_file_path = f'{filename}_child_skus.csv'  # Path to save the output
+child_sku_unique_df.to_csv(output_file_path, index=False)
+
+print(f"Generated child SKUs saved to {output_file_path}")
