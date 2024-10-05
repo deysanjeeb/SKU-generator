@@ -31,7 +31,7 @@ def generate_child_skus(parent_sku):
 
     return child_skus
 
-def write_to_csv(skus, filename='child_skus.csv'):
+def write_to_csv(skus, filename):
     with open(filename, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(['Child SKU', 'Description'])
@@ -48,5 +48,6 @@ if __name__ == "__main__":
         print()
 
     # Write to CSV
-    write_to_csv(child_skus)
-    print(f"Child SKUs have been written to child_skus.csv")
+    filename=f'{parent_sku}_child_skus.csv'
+    write_to_csv(child_skus, filename)
+    print(f"Child SKUs have been written to {filename}")
